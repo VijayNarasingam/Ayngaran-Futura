@@ -349,4 +349,4 @@ defined in `src/styles/global.css`; `ThemeContext` sets `data-theme="castle"` on
 
 ## License
 
-© BrainWays Tech. All rights reserved.
+© BRAINWAYSTECHLLP. All rights reserved.
