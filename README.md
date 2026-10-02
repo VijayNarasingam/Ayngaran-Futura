@@ -1,11 +1,11 @@
 # Ayngaran Futura
 
-**Plot Booking, Project & Daily Voucher Tracker** — a single-page operations dashboard for a
-layout/real-estate sales team, covering marketers, projects, plot bookings, loans & liabilities,
-and daily vouchers.
+**Plot Booking, Project & Daily Voucher Tracker** — a dashboard for a layout / real-estate sales
+team, covering marketers, projects, plot bookings, loans & liabilities, and daily vouchers.
 
-Built with React 18 + Vite. **No backend required**: all data lives in `localStorage`, so the
-built `dist/` can be hosted on any static host (or opened straight from disk).
+React 18 + Vite on the front end, a **zero-dependency Node API server on SQLite** (`node:sqlite`)
+on the back end. No npm runtime dependencies on the server, no ORM, no external database to
+install.
 
 ---
 
@@ -15,8 +15,10 @@ built `dist/` can be hosted on any static host (or opened straight from disk).
 - [Tech stack](#tech-stack)
 - [Getting started](#getting-started)
 - [Available scripts](#available-scripts)
+- [Architecture](#architecture)
+- [REST API](#rest-api)
+- [Database](#database)
 - [Routes](#routes)
-- [Data model](#data-model)
 - [Project structure](#project-structure)
 - [Tests](#tests)
 - [Deployment](#deployment)
@@ -27,14 +29,14 @@ built `dist/` can be hosted on any static host (or opened straight from disk).
 
 ## Features
 
-- **Marketer Details** — CRUD for marketers with commission-related fields, active/inactive status.
+- **Marketer Details** — CRUD for marketers: region, commission percent, status, sourced business.
 - **Project Details** — Project 1/2/3 seed data plus custom projects; per-project overview with
-  area, plot count, pricing, approval/patta numbers, and status.
+  area, plot count, pricing, approval / patta / survey numbers, and status.
 - **Plot Booking** — book plots against a project with plot number, sq ft, total amount, booking
   amount, auto-computed pending amount, and status flow
   (`Enquiry → Advance Paid → Booked → Registered / Cancelled`).
-- **Loan and Liabilities** — bank/private/vehicle loans, supplier liabilities and statutory dues,
-  with principal, outstanding balance, EMI, payment mode, and status.
+- **Loan and Liabilities** — bank / private / vehicle loans, supplier liabilities and statutory
+  dues, with principal, outstanding balance, interest rate, EMI, payment mode, and status.
 - **Daily Vouchers** — four sections, each its own voucher book:
   | Section | Category fields |
   |---|---|
@@ -46,7 +48,8 @@ built `dist/` can be hosted on any static host (or opened straight from disk).
   rate, site spend by head, liability outstanding).
 - **Filters, search and sorting** on every data table.
 - **CSV export** for every table (UTF-8 BOM so Excel opens ₹ amounts correctly).
-- **Add / Edit / Delete** with validation, confirmation dialog and toasts.
+- **Add / Edit / Delete** with validation, confirmation dialog, and error toasts when the API is
+  unreachable.
 - **Responsive** — fixed sidebar on desktop, off-canvas drawer on mobile.
 
 ---
@@ -58,7 +61,9 @@ built `dist/` can be hosted on any static host (or opened straight from disk).
 | UI | React 18 (function components + hooks) |
 | Routing | react-router-dom 6 (`HashRouter`) |
 | Build | Vite 8 + `@vitejs/plugin-react` |
-| State | React Context + a pure reducer, persisted to `localStorage` |
+| Server | Node's built-in `node:http` — no Express, no npm dependencies |
+| Database | `node:sqlite` (`DatabaseSync`) — a single local `.sqlite` file |
+| State | React Context over the API; SQL is the single source of truth |
 | Icons | Bootstrap Icons (CDN) |
 | Fonts | Inter + Space Grotesk (Google Fonts) |
 | Styling | Hand-written CSS with custom properties (no CSS framework) |
@@ -68,20 +73,34 @@ built `dist/` can be hosted on any static host (or opened straight from disk).
 
 ## Getting started
 
-**Requirements:** Node.js 18+ and npm.
+**Requirements:** Node.js **22+** (for `node:sqlite` — it prints an *ExperimentalWarning* on
+first run, which is expected) and npm.
 
 ```bash
 git clone https://github.com/VijayNarasingam/Ayngaran-Futura.git
 cd Ayngaran-Futura
 npm install
+```
+
+Run the API server and the Vite dev server in **two terminals**:
+
+```bash
+# terminal 1 — SQL API on http://localhost:8080
+npm run server
+
+# terminal 2 — Vite dev server on http://localhost:5173
 npm run dev
 ```
 
-Vite prints the local URL (default <http://localhost:5173>). The app opens on
-`#/marketers`.
+Open the Vite URL. The app opens on `#/marketers`.
 
-> First load seeds demo records (Project 1/2/3, marketers, bookings, loans, vouchers). All edits
-> persist to `localStorage` under the key `ayngaran-futura:data:v1`.
+Vite proxies `/api` → `http://localhost:8080`, so the frontend talks to a same-origin path in dev.
+If the API is not running, the dashboard shows *"Could not reach the SQL server. Run `npm run
+server`."* on every save.
+
+The database file is created automatically at `server/ayngaran-futura.sqlite` on first boot and
+seeded from `src/data/seed.js` — but only for tables that are **empty**, so restarting the server
+never re-inserts or clobbers your data.
 
 ---
 
@@ -89,18 +108,135 @@ Vite prints the local URL (default <http://localhost:5173>). The app opens on
 
 | Script | What it does |
 |---|---|
-| `npm run dev` | Start the Vite dev server with hot reload |
-| `npm run build` | Production build into `dist/` |
-| `npm run preview` | Serve the production build locally |
-| `npm run test:logic` | Run the logic/data smoke suite (`node:assert`) |
+| `npm run dev` | Start the Vite dev server (frontend only, expects the API to be up) |
+| `npm run server` | Start the Node + SQLite API on port 8080 |
+| `npm run dev:all` | Both in one command — **POSIX shells only**, see the note below |
+| `npm run build` | Production build of the frontend into `dist/` |
+| `npm run preview` | Serve the production frontend build locally |
+| `npm run test:logic` | Frontend logic / data invariants (`node:assert`) |
+| `npm run test:sql` | SQLite smoke test against a throwaway temp database |
 | `npm run test:classes` | Dump the CSS class inventory used by the app |
+
+> **`dev:all` on Windows:** the script uses `cmd &` backgrounding, which PowerShell does not
+> support. On Windows either run the two commands in separate terminals, or use
+> `npx concurrently "npm run server" "npm run dev"`.
+
+### Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `8080` | API server port |
+| `SQLITE_PATH` | `server/ayngaran-futura.sqlite` | Database file location |
+
+```bash
+PORT=9000 SQLITE_PATH=/var/data/ayngaran.sqlite npm run server
+```
+
+---
+
+## Architecture
+
+```
+  Browser (React SPA)
+        │  fetch('/api/...')          ── src/lib/api.js
+        ▼
+  Vite dev proxy  /api → :8080        (dev only; same-origin in production)
+        ▼
+  Node http server  :8080              ── server/index.js
+        │  tiny express-like route facade, CORS open, 5 MB body cap
+        ▼
+  /api routes                          ── server/routes/api.js
+        │  whitelist collections, shape SQL params
+        ▼
+  DatabaseSync (node:sqlite)           ── server/db/database.js
+        │  prepare() with bound parameters only
+        ▼
+  ayngaran-futura.sqlite               ── server/db/schema.js
+```
+
+**Frontend.** `StoreProvider` (`src/context/StoreContext.jsx`) fetches the whole dashboard state
+once from `GET /api/state`, then keeps React state in sync optimistically from the row the API
+returns. `add` / `update` / `remove` are `async` and reject on API failure, so the calling page can
+show an error toast instead of silently dropping the edit. Pages consume `data`, `records()`,
+`find()`, `loading`, `error` and `reload` through `useStore()`.
+
+**Derived values are never stored.** Pending amount, project totals, KPI aggregates and
+site-spend-by-head are all computed in `src/lib/selectors.js` from the raw rows, so the database
+holds only what the user actually entered.
+
+**`src/lib/storeReducer.js` is retained for the seed data** (`buildSeedState`) and for
+`test:logic`. The live app no longer uses `localStorage` for persistence — SQLite is the source of
+truth.
+
+**The resources layer is the extension point.** Each module in `src/resources/` declares a
+collection's fields, table columns, filters, and CSV filename; `ResourcePage` renders the add/edit
+form and the table from that definition. Adding an entity is a data change, not a component
+rewrite.
+
+---
+
+## REST API
+
+Base path `/api`. JSON in, JSON out. Collection names match the UI: `marketers`, `projects`,
+`bookings`, `loans`, `vouchers`.
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/state` | Whole dashboard state — `{ meta, settings, marketers[], projects[], bookings[], loans[], vouchers[] }` |
+| `GET` | `/api/settings` | `{ theme }` |
+| `PUT` | `/api/settings` | Body `{ theme }` → updated settings |
+| `GET` | `/api/:collection` | Array of rows, ordered by insertion |
+| `GET` | `/api/:collection/:id` | One row, or `404` |
+| `POST` | `/api/:collection` | Inserts (auto-generates the id), returns `201` + the created row |
+| `PUT` | `/api/:collection/:id` | Updates the supplied columns only, returns the updated row |
+| `DELETE` | `/api/:collection/:id` | `{ ok: true, id }`, or `404` |
+
+Ids are sequential with a per-collection prefix (`MKT-0001`, `PRJ-0001`, `BKG-0001`, `LN-0001`,
+`VC-0001`). `createdAt` is preserved on update; `updatedAt` is always refreshed.
+
+Errors return `{ error: "..." }` with a 4xx status. Unknown collections are rejected with `404`
+before any SQL runs.
+
+```bash
+# examples
+curl http://localhost:8080/api/projects
+curl -X POST http://localhost:8080/api/vouchers \
+  -H 'content-type: application/json' \
+  -d '{"type":"office","date":"2026-01-15","amount":2500,"category":"Rent"}'
+```
+
+---
+
+## Database
+
+One table per collection plus a key/value `settings` table (`server/db/schema.js`). Every column is
+nullable `TEXT`/`REAL` except the `id` primary key, which keeps the UI free to accept flexible
+records; numeric columns are coerced and validated on write.
+
+| Collection | ID prefix | Columns (excluding `id`, `createdAt`, `updatedAt`) |
+|---|---|---|
+| `marketers` | `MKT-0001` | name, phone, email, region, commissionPercent, status, joinedOn, remarks |
+| `projects` | `PRJ-0001` | name, siteName, location, surveyNumber, pattaNumber, approvalNo, totalAreaAcres, totalAreaSqft, totalPlots, pricePerSqft, launchDate, landOwner, status, remarks |
+| `bookings` | `BKG-0001` | customerName, phone, projectRef, plotNumber, areaCents, squareFeet, totalAmount, bookingAmount, bookingDate, marketerRef, status, remarks |
+| `loans` | `LN-0001` | lenderName, liabilityType, projectRef, principalAmount, outstandingBalance, interestRate, emiAmount, emiDay, tenureMonths, sanctionDate, documentRef, status, remarks |
+| `vouchers` | `VC-0001` | type, date, category, amount, paymentMode, paidTo, projectRef, remarks |
+
+`projectRef` / `marketerRef` are loose references (id or free text), not foreign keys — the UI
+resolves them for display. Keep `schema.js` in sync with `src/resources/*.jsx` field definitions.
+
+**Backups** are a file copy:
+
+```bash
+# stop the server first
+cp server/ayngaran-futura.sqlite backup/ayngaran-futura-$(date +%F).sqlite
+```
 
 ---
 
 ## Routes
 
-`HashRouter` is used deliberately so the built dashboard works on any static host — or even by
-opening `dist/index.html` from disk — without server rewrite rules.
+`HashRouter` is used deliberately so the built frontend works on any static host without server
+rewrite rules.
 
 | Route | View |
 |---|---|
@@ -120,37 +256,23 @@ opening `dist/index.html` from disk — without server rewrite rules.
 
 ---
 
-## Data model
-
-Five collections, all records shaped `{ id, createdAt, updatedAt, ...fields }`.
-
-| Collection | ID prefix | Key fields |
-|---|---|---|
-| `marketers` | `MKT-0001` | name, phone, email, area, status, commission |
-| `projects` | `PRJ-0001` | name, siteName, location, area (acres/sq ft), totalPlots, pricePerSqft, launchDate, approval/patta/survey numbers, status |
-| `bookings` | `BKG-0001` | projectId, customerName, plotNumber, squareFeet, totalAmount, bookingAmount, pending (derived), bookingDate, status |
-| `loans` | `LN-0001` | lenderName, liabilityType, principalAmount, outstandingBalance, emiAmount, paymentMode, status |
-| `vouchers` | `VC-0001` | type (`office`, `promotion`, `registration`, `site-*`), date, amount, category (where applicable), remarks |
-
-Mutation flow: `src/lib/storeReducer.js` is a pure reducer (`add` / `update` / `remove` /
-`settings` / `import` / `reset`); `StoreContext` wires it to React state and persists to
-`localStorage`. Ids are generated sequentially by `nextId()`. `normalizeState()` guards against
-partial or stale payloads from `localStorage` or a backup file.
-
-Derived numbers (pending amount, project totals, dashboard KPIs, site spend by head) live in
-`src/lib/selectors.js` — never stored on the record.
-
----
-
 ## Project structure
 
 ```
 .
 ├── index.html                  # Vite entry, fonts + Bootstrap Icons
-├── vite.config.js              # base: './' for portable builds
+├── vite.config.js              # base: './' + /api dev proxy
+├── server/
+│   ├── index.js                # http server, route matching, CORS, body parsing
+│   ├── routes/api.js           # /api endpoints
+│   ├── db/
+│   │   ├── schema.js           # DDL + column whitelists + numeric columns
+│   │   └── database.js         # DatabaseSync wrapper: list/find/insert/update/delete/seed
+│   ├── test-sql.mjs            # npm run test:sql
+│   └── ayngaran-futura.sqlite  # generated, git-ignored
 ├── public/favicon.svg
 ├── tests/
-│   ├── verified.mjs            # logic/data smoke suite (npm run test:logic)
+│   ├── verified.mjs            # npm run test:logic
 │   ├── check-classes.mjs
 │   └── dump-classes.mjs
 └── src/
@@ -161,47 +283,58 @@ Derived numbers (pending amount, project totals, dashboard KPIs, site spend by h
     ├── components/             # Layout, Sidebar, DataTable, ResourcePage, FormField,
     │                           # Modal, ConfirmDialog, Charts, KpiCard, Badge, PageHeader
     ├── context/                # StoreContext, ThemeContext, ToastContext
-    ├── lib/                    # storeReducer, selectors, csv, format
+    ├── lib/                    # api.js (fetch client), selectors, csv, format, storeReducer
     ├── data/                   # reference.js (master data), seed.js (demo records)
     ├── styles/                 # global.css (theme), compat.css
     └── asserts/                # logo assets
 ```
-
-**The resources layer is the extension point.** Each module in `src/resources/` declares a
-collection's fields, table columns, filters, and CSV filename; `ResourcePage` renders add/edit
-forms and the table from that definition. Adding a new entity is a data change, not a component
-rewrite.
 
 ---
 
 ## Tests
 
 ```bash
-npm run test:logic
+npm run test:logic   # frontend data + selector invariants
+npm run test:sql     # SQLite CRUD against a temp database
 ```
 
-`tests/verified.mjs` asserts the invariants that matter most:
+`tests/verified.mjs` asserts what matters most on the data layer:
 
 - all 11 site-spend categories are configured
 - seed contains exactly Project 1, 2 and 3
 - the pending-amount invariant holds (`totalValue === received + pending`) across bookings and per project
 - site spend grouped by head sums to total site vouchers
-- reducer `add` / `update` / `remove` behave correctly and generate sequential `BKG-` ids
+- reducer `add` / `update` / `remove` generate sequential ids and mutate correctly
 - CSV escaping and currency formatting
 
-`npm run test:classes` prints the CSS class inventory — useful when refactoring `global.css`.
+`server/test-sql.mjs` points `SQLITE_PATH` at a throwaway temp database, then checks that all five
+tables list, seed, insert (auto id `MKT-xxxx`), update and delete correctly — so running it never
+touches your real data.
 
 ---
 
 ## Deployment
 
+The frontend is a static build and the server is a single Node process — there is no bundling step
+for the API.
+
 ```bash
-npm run build     # → dist/
+npm run build              # → dist/
 ```
 
-`dist/` is fully static and portable (`base: './'` + hash routing). Publish it to any static host:
-GitHub Pages, Netlify, Vercel, S3, or a plain Nginx document root. Because state is browser-local,
-data is per-device — there is no server to back up, and clearing site data clears the records.
+```bash
+# 1. frontend → any static host (GitHub Pages, Netlify, S3, Nginx)
+# 2. api → any Node 22+ host
+PORT=8080 SQLITE_PATH=/var/lib/ayngaran/ayngaran.sqlite node server/index.js
+```
+
+Because routing is hash-based and Vite builds with `base: './'`, the frontend can be served from a
+sub-path. Serve the API **same-origin** with the static files (a reverse-proxy rule for `/api`) or
+set a CORS-allowed origin — the server currently sends `access-control-allow-origin: *`, which is
+fine for a trusted internal deployment but should be locked down before exposing the API publicly.
+
+There is **no authentication** in this build. Put the app behind your network boundary, VPN, or an
+authenticating reverse proxy before exposing it.
 
 ---
 
