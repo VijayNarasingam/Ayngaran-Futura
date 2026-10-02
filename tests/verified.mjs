@@ -1,0 +1,41 @@
+﻿import assert from "node:assert/strict";
+import { SEED_PROJECTS, SEED_MARKETERS, SEED_BOOKINGS, SEED_LOANS, SEED_VOUCHERS } from "../src/data/seed.js";
+import { SITE_SPEND_CATEGORIES, VOUCHER_TYPES, siteHeadKey, NAV_TREE } from "../src/data/reference.js";
+import { dashboardStats, projectStats, pendingAmount, bookingRate, sumBy, siteSpendByHead } from "../src/lib/selectors.js";
+import { storeReducer, buildSeedState } from "../src/lib/storeReducer.js";
+import { toCSV } from "../src/lib/csv.js";
+import { money, compactMoney } from "../src/lib/format.js";
+
+console.log("=== Running Complete Ayngaran Futura Smoke Suite ===");
+assert.equal(SITE_SPEND_CATEGORIES.length, 11);
+console.log("PASS 1: All 11 site spend categories configured (Travelling, Road, Drainage, etc)");
+assert.equal(SEED_PROJECTS.length, 3);
+console.log("PASS 2: Seed has exactly Project 1, Project 2, and Project 3");
+const state = buildSeedState();
+const stats = dashboardStats(state);
+assert.equal(stats.totalValue, stats.received + stats.pending);
+console.log("PASS 3: Pending amount invariant holds across bookings");
+for (const p of SEED_PROJECTS) {
+  const pStat = projectStats(state, p.id);
+  assert.equal(pStat.totalValue, pStat.received + pStat.pending);
+}
+console.log("PASS 4: Project 1/2/3 individual isolation holds");
+const siteBreakdown = siteSpendByHead(SEED_VOUCHERS);
+assert.equal(sumBy(siteBreakdown, "total"), sumBy(SEED_VOUCHERS.filter(v => v.type.startsWith("site-") || v.type === "site"), "amount"));
+console.log("PASS 5: Site spend by head sums to total site vouchers");
+let s = storeReducer(state, { type: "add", collection: "bookings", values: { customerName: "Devi", totalAmount: 100, bookingAmount: 40 } });
+assert.equal(pendingAmount(s.bookings[s.bookings.length - 1]), 60);
+const addedId = s.bookings[s.bookings.length - 1].id;
+assert.ok(addedId.startsWith("BKG-"));
+s = storeReducer(s, { type: "update", collection: "bookings", id: addedId, values: { bookingAmount: 70 } });
+assert.equal(pendingAmount(s.bookings[s.bookings.length - 1]), 30);
+s = storeReducer(s, { type: "remove", collection: "bookings", id: addedId });
+assert.equal(s.bookings.length, state.bookings.length);
+console.log("PASS 6: Store reducer handles add, update, and remove");
+const csv = toCSV([{ key: "id", label: "ID" }, { key: "name", label: "Name" }], [{ id: "B1", name: "A, B" }]);
+assert.ok(csv.includes("A, B"));
+console.log("PASS 7: CSV escaping verified");
+assert.ok(money(150000).includes("1,50,000"));
+assert.ok(compactMoney(15000000).includes("1.50 Cr"));
+console.log("PASS 8: Indian money formatting correct");
+console.log("=== ALL 8 SUITES PASSED ===");

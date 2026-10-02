@@ -1,0 +1,23 @@
+{
+  "name": "ayngaran-futura",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Ayngaran Futura - plot booking, project, marketer, loan and daily voucher dashboard",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:logic": "node tests/verified.mjs",
+    "test:classes": "node tests/dump-classes.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^8.1.4"
+  }
+}
