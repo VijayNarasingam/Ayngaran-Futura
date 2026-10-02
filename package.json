@@ -6,10 +6,13 @@
   "description": "Ayngaran Futura - plot booking, project, marketer, loan and daily voucher dashboard",
   "scripts": {
     "dev": "vite",
+    "server": "node server/index.js",
+    "dev:all": "node server/index.js & vite",
     "build": "vite build",
     "preview": "vite preview",
     "test:logic": "node tests/verified.mjs",
-    "test:classes": "node tests/dump-classes.mjs"
+    "test:classes": "node tests/dump-classes.mjs",
+    "test:sql": "node server/test-sql.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

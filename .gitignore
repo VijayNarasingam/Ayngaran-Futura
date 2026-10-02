@@ -5,3 +5,5 @@ dist-ssr
 .vite
 .DS_Store
 npm-debug.log*
+server/*.sqlite
+server/*.sqlite-*

@@ -79,23 +79,27 @@ export default function Projects() {
     setForm({ mode: 'edit' })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const problems = validateValues(values, PROJECT_FIELDS)
     if (Object.keys(problems).length) {
       setErrors(problems)
       toast.error('Please fix the highlighted fields.')
       return
     }
-    if (form?.mode === 'add') {
-      const created = add('projects', coerceValues(values, PROJECT_FIELDS))
-      toast.success(`${values.name} added as ${created.id}.`)
+    try {
+      if (form?.mode === 'add') {
+        const created = await add('projects', coerceValues(values, PROJECT_FIELDS))
+        toast.success(`${values.name} added as ${created.id}.`)
+        setForm(null)
+        navigate(`/projects/${created.id}`)
+        return
+      }
+      await update('projects', selected.id, coerceValues(values, PROJECT_FIELDS))
+      toast.success(`${values.name} details updated.`)
       setForm(null)
-      navigate(`/projects/${created.id}`)
-      return
+    } catch (err) {
+      toast.error(err.message || 'Could not save to the SQL database.')
     }
-    update('projects', selected.id, coerceValues(values, PROJECT_FIELDS))
-    toast.success(`${values.name} details updated.`)
-    setForm(null)
   }
 
   const openAdd = () => {

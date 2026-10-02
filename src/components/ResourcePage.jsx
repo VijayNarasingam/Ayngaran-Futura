@@ -119,7 +119,7 @@ export function ResourcePage({ resource }) {
     setValues((current) => ({ ...current, [key]: value, category: '' }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const problems = validateValues(values, fields)
     if (Object.keys(problems).length) {
       setErrors(problems)
@@ -132,20 +132,28 @@ export function ResourcePage({ resource }) {
     }
     if (resource.sanitize) Object.assign(payload, resource.sanitize(payload, values) || {})
 
-    if (form?.mode === 'edit' && form?.row) {
-      update(resource.collection, form.row.id, payload)
-      toast.success(`${resource.singular || 'Record'} ${form.row.id} updated.`)
-    } else {
-      const created = add(resource.collection, payload)
-      toast.success(`${resource.singular || 'Record'} ${created.id} saved.`)
+    try {
+      if (form?.mode === 'edit' && form?.row) {
+        await update(resource.collection, form.row.id, payload)
+        toast.success(`${resource.singular || 'Record'} ${form.row.id} updated.`)
+      } else {
+        const created = await add(resource.collection, payload)
+        toast.success(`${resource.singular || 'Record'} ${created.id} saved.`)
+      }
+      closeForm()
+    } catch (err) {
+      toast.error(err.message || 'Could not save to the SQL database.')
     }
-    closeForm()
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!pendingDelete) return
-    remove(resource.collection, pendingDelete.id)
-    toast.info(`${resource.singular || 'Record'} ${pendingDelete.id} deleted.`)
+    try {
+      await remove(resource.collection, pendingDelete.id)
+      toast.info(`${resource.singular || 'Record'} ${pendingDelete.id} deleted.`)
+    } catch (err) {
+      toast.error(err.message || 'Could not delete from the SQL database.')
+    }
     setPendingDelete(null)
   }
 
