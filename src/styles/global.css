@@ -1328,3 +1328,155 @@ button, input, select, textarea {
     grid-template-columns: 1fr;
   }
 }
+/* =====================================================================
+   Welcome screen - full-bleed hero on first load, before a section is
+   picked. Dismissed by the CTA, Escape, or any sidebar click.
+   ===================================================================== */
+
+body.welcome-open { overflow: hidden; }
+
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--castle-bg-deep);
+}
+
+.welcome-hero {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: welcome-zoom 18s ease-out forwards;
+}
+
+.welcome-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(3, 15, 11, 0.62) 0%, rgba(3, 15, 11, 0.86) 55%, rgba(3, 15, 11, 0.96) 100%),
+    linear-gradient(180deg, rgba(7, 30, 22, 0.72) 0%, rgba(7, 30, 22, 0.35) 40%, rgba(7, 30, 22, 0.85) 100%);
+}
+
+.welcome-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  padding: 32px 24px;
+  max-width: 680px;
+  animation: welcome-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.welcome-logo {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  margin-bottom: 14px;
+  animation: welcome-pop 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.welcome-kicker {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--castle-gold);
+}
+
+.welcome-title {
+  margin: 8px 0 0;
+  font-family: var(--font-display, 'Space Grotesk', 'Inter', sans-serif);
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #fdf6e3;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
+}
+
+.welcome-sub {
+  margin: 12px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(245, 240, 220, 0.82);
+  max-width: 46ch;
+}
+
+.welcome-sections {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 26px 0 0;
+  padding: 0;
+}
+
+.welcome-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(245, 240, 220, 0.9);
+  background: rgba(232, 205, 130, 0.1);
+  border: 1px solid rgba(232, 205, 130, 0.32);
+  backdrop-filter: blur(6px);
+}
+
+.welcome-chip i { color: var(--castle-gold); font-size: 0.9rem; }
+
+.welcome-enter {
+  margin-top: 30px;
+  padding: 12px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.welcome-hint {
+  margin: 12px 0 0;
+  font-size: 0.76rem;
+  color: rgba(245, 240, 220, 0.55);
+}
+
+@keyframes welcome-zoom {
+  from { transform: scale(1.06); }
+  to { transform: scale(1); }
+}
+
+@keyframes welcome-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes welcome-pop {
+  from { opacity: 0; transform: scale(0.86) rotate(-6deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@media (max-width: 840px) {
+  .welcome-body { padding: 24px 18px; }
+  .welcome-logo { width: 78px; height: 78px; }
+  .welcome-sections { gap: 6px; }
+  .welcome-chip { font-size: 0.74rem; padding: 6px 11px; }
+  .welcome-hero { object-position: 60% center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-hero,
+  .welcome-body,
+  .welcome-logo { animation: none; }
+}

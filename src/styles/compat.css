@@ -6,7 +6,10 @@
 .scrim { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 45; }
 .sidebar { width: var(--sidebar-width); background: var(--bg-sidebar); color: var(--text-sidebar); display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid var(--border-sidebar); position: sticky; top: 0; height: 100vh; z-index: 50; transition: var(--transition); }
 .brand { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border-sidebar); }
-.brand-logo { width: 46px; height: 46px; border-radius: var(--radius-md); object-fit: cover; flex-shrink: 0; border: 1px solid rgba(232,205,130,.4); }
+/* The logo art is gold on a near-black field. `screen` makes the black
+   mathematically transparent against any dark backdrop, so no alpha
+   channel (and no halo) is needed. Drop `contain` on a non-dark surface. */
+.brand-logo { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; mix-blend-mode: screen; }
 .topbar-logo { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; }
 .brand-mark { width: 42px; height: 42px; border-radius: var(--radius-md); background: linear-gradient(135deg, #fae9a8 0%, #d4af37 45%, #8a6a1f 100%); display: grid; place-items: center; color: #071e16; font-weight: 700; flex-shrink: 0; }
 .brand-text { display: flex; flex-direction: column; gap: 2px; }

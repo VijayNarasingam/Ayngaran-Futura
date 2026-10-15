@@ -7,3 +7,9 @@ dist-ssr
 npm-debug.log*
 server/*.sqlite
 server/*.sqlite-*
+
+# Full-resolution source artwork - kept on disk, not in the repo.
+# The app ships the processed copies instead: src/asserts/logo-mark.png
+# and public/ayngaran-futura-hero.jpg
+src/asserts/Logo(2).png
+src/asserts/Ayngaran Futura.jpg.jpeg
