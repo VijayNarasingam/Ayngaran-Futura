@@ -94,6 +94,10 @@ npm run dev
 
 Open the Vite URL. The app opens on `#/marketers`.
 
+> **Connection status is always visible.** A banner at the top of the content area reports
+> *"Loading records..."*, or *"Cannot reach the SQL database"* with a **Retry** button when the
+> API is unreachable - so an empty table is never mistaken for a working one.
+
 Vite proxies `/api` → `http://localhost:8080`, so the frontend talks to a same-origin path in dev.
 If the API is not running, the dashboard shows *"Could not reach the SQL server. Run `npm run
 server`."* on every save.
@@ -127,9 +131,10 @@ never re-inserts or clobbers your data.
 |---|---|---|
 | `PORT` | `8080` | API server port |
 | `SQLITE_PATH` | `server/ayngaran-futura.sqlite` | Database file location |
+| `CORS_ORIGIN` | `*` (any) | Exact allowed origin. **Set this before exposing the API anywhere other than localhost** |
 
 ```bash
-PORT=9000 SQLITE_PATH=/var/data/ayngaran.sqlite npm run server
+PORT=9000 SQLITE_PATH=/var/data/ayngaran.sqlite CORS_ORIGIN=https://ops.example.com npm run server
 ```
 
 ---
@@ -194,8 +199,29 @@ Base path `/api`. JSON in, JSON out. Collection names match the UI: `marketers`,
 Ids are sequential with a per-collection prefix (`MKT-0001`, `PRJ-0001`, `BKG-0001`, `LN-0001`,
 `VC-0001`). `createdAt` is preserved on update; `updatedAt` is always refreshed.
 
-Errors return `{ error: "..." }` with a 4xx status. Unknown collections are rejected with `404`
-before any SQL runs.
+### Error contract
+
+Every failure returns `{ "error": "<human-readable message>" }` with a real status — the UI
+surfaces the message verbatim in a toast or the status banner.
+
+| Status | When |
+|---|---|
+| `400` | Body is not a JSON object, is empty, or malformed JSON; a text value in a numeric column; text longer than 2000 chars; a booking whose `bookingAmount` exceeds `totalAmount` |
+| `404` | Unknown collection, or a record id that does not exist |
+| `409` | `POST` with an id that already exists; `DELETE` of a record that other records still reference |
+| `413` | Request body over 5 MB |
+| `500` | Genuinely unexpected server fault only |
+
+**Referential integrity.** `projectRef` is free text, not a foreign key, so deleting a project
+that bookings/loans/vouchers still point at is refused with `409` and a message naming the
+dependents. Pass `?cascade=1` to detach them first:
+
+```bash
+curl -X DELETE 'http://localhost:8080/api/projects/PRJ-0001?cascade=1'
+```
+
+**Validation is enforced in the database layer, not just the form.** The rules live in
+`src/lib/rules.js` and are shared by the UI and the API, so the API cannot be bypassed.
 
 ```bash
 # examples
@@ -308,8 +334,10 @@ npm run test:sql     # SQLite CRUD against a temp database
 - CSV escaping and currency formatting
 
 `server/test-sql.mjs` points `SQLITE_PATH` at a throwaway temp database, then checks that all five
-tables list, seed, insert (auto id `MKT-xxxx`), update and delete correctly — so running it never
-touches your real data.
+tables list, seed, insert (auto id `MKT-xxxx`, next id increments), update and delete correctly,
+that a duplicate id is rejected with `409`, that deleting a referenced project is refused with
+`409`, and that an overpaying booking is refused with `400`. Running it never touches your real
+data.
 
 ---
 

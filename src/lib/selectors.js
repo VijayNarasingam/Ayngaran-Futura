@@ -1,8 +1,13 @@
 import { SITE_SPEND_CATEGORIES, siteHeadKey } from '../data/reference.js'
 import { monthKey, monthLabel, num, recentMonths } from './format.js'
 
+/**
+ * Amount still owed on a booking. Negative means the customer overpaid, so it
+ * is NOT floored at zero - clamping it would break the invariant
+ * totalValue === received + pending. Surfaces as a credit in the tables.
+ */
 export const pendingAmount = (booking) =>
-  Math.max(num(booking?.totalAmount) - num(booking?.bookingAmount), 0)
+  num(booking?.totalAmount) - num(booking?.bookingAmount)
 
 export const bookedAmount = (booking) => num(booking?.bookingAmount)
 

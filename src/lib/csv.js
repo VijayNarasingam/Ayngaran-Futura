@@ -1,6 +1,22 @@
 import { formatDate } from './format.js'
 
-const escapeCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+/**
+ * Neutralises spreadsheet formula injection. Excel and LibreOffice execute a
+ * cell that begins with = + - @ (or a tab/CR) when the file is opened, so a
+ * value like `=HYPERLINK(...)` in "Paid To" would run attacker-controlled code.
+ * Prefixing an apostrophe forces it to be read as text.
+ *
+ * A cell that is *only* a number is left untouched, so legitimate negatives
+ * (refunds, overpayment credits) survive as numbers rather than text.
+ */
+const PLAIN_NUMBER = /^-?\d+(?:[.,]\d+)?%?$/
+const FORMULA_LEAD = /^[=+\-@\t\r]/
+
+const escapeCell = (value) => {
+  let text = String(value ?? '')
+  if (FORMULA_LEAD.test(text) && !PLAIN_NUMBER.test(text.trim())) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
 
 const cellValue = (column, row) => {
   const value = column.value ? column.value(row) : row[column.key]

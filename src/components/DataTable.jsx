@@ -56,9 +56,13 @@ export function DataTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultSort?.key, defaultSort?.direction])
 
+  // Reset the page on a real change in row count, not on array identity -
+  // `rows` is rebuilt whenever any record mutates, which would otherwise
+  // throw the user back to page 1 mid-session.
+  const rowCount = rows.length
   useEffect(() => {
     setPage(1)
-  }, [rows, pageSize])
+  }, [rowCount, pageSize])
 
   const sorted = useMemo(() => {
     const column = columns.find((item) => item.key === sort?.key)
@@ -99,27 +103,31 @@ export function DataTable({
         <table className="table">
           <thead>
             <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  style={column.width ? { width: column.width } : undefined}
-                  className={column.align === 'right' ? 'align-right' : ''}
-                >
-                  <button
-                    type="button"
-                    className={`th-sort ${sort?.key === column.key ? 'is-active' : ''}`.trim()}
-                    onClick={() => toggleSort(column)}
+              {columns.map((column) => {
+                const active = sort?.key === column.key
+                const ariaSort = active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+                return (
+                  <th
+                    key={column.key}
+                    style={column.width ? { width: column.width } : undefined}
+                    className={column.align === 'right' ? 'align-right' : ''}
+                    aria-sort={column.sortable === false ? undefined : ariaSort}
                   >
-                    {column.label}
-                    <i
-                      className={`bi bi-caret-${
-                        sort?.key === column.key && sort.direction === 'asc' ? 'up' : 'down'
-                      }-fill`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </th>
-              ))}
+                    <button
+                      type="button"
+                      className={`th-sort ${active ? 'is-active' : ''}`.trim()}
+                      onClick={() => toggleSort(column)}
+                      aria-label={`Sort by ${column.label}`}
+                    >
+                      {column.label}
+                      <i
+                        className={`bi bi-caret-${active && sort.direction === 'asc' ? 'up' : 'down'}-fill`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </th>
+                )
+              })}
               <th className="actions-col align-right">Actions</th>
             </tr>
           </thead>

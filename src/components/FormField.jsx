@@ -35,7 +35,9 @@ export const coerceValues = (values, fields) => {
 export function FormField({ field, value, error, onChange }) {
   const inputId = `field-${field.key}`
   const options = normaliseOptions(typeof field.options === 'function' ? field.options() : field.options)
-  const isStatic = field.computed || field.readonly
+  // `computed` is a function, so coerce to a real boolean - otherwise the
+  // function itself would be handed to readOnly and React would drop it.
+  const isStatic = Boolean(field.computed || field.readonly)
   const current = value === undefined || value === null ? '' : String(value)
   const onChangeValue = (next) => onChange(field.key, next)
 
@@ -136,14 +138,23 @@ export function FormGrid({ fields, values, errors = {}, onChange, before, after 
   )
 }
 
-/** Validates a fields array against form values; returns an errors map. */
+/**
+ * Validates a fields array against form values; returns an errors map.
+ * A field may declare `validate(values)` to return an error string, which is
+ * how cross-field rules (e.g. "booking amount cannot exceed total") are checked.
+ */
 export const validateValues = (values, fields) => {
   const errors = {}
   fields.forEach((field) => {
-    if (!field.required || field.computed || field.readonly) return
+    if (field.computed || field.readonly) return
     const value = values[field.key]
-    if (value === undefined || value === null || String(value).trim() === '') {
+    if (field.required && (value === undefined || value === null || String(value).trim() === '')) {
       errors[field.key] = `${field.label} is required.`
+      return
+    }
+    if (typeof field.validate === 'function') {
+      const message = field.validate(values)
+      if (message) errors[field.key] = message
     }
   })
   return errors

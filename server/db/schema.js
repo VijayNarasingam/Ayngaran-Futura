@@ -64,3 +64,19 @@ export const NUMERIC_COLUMNS = new Set([
 ])
 
 export const COLLECTION_TABLES = ['marketers', 'projects', 'bookings', 'loans', 'vouchers']
+
+/** Ids are PREFIX-0001 style and travel through URLs, so keep them short and safe. */
+export const MAX_ID_LENGTH = 64
+
+/** Generous cap on any free-text field, to stop unbounded blobs being stored. */
+export const MAX_TEXT_LENGTH = 2000
+
+/**
+ * Loose cross-collection references. `projectRef` / `marketerRef` are free text
+ * rather than foreign keys, so deleting a parent has to be checked by hand.
+ */
+export const REFERENCES = {
+  bookings: 'projectRef',
+  loans: 'projectRef',
+  vouchers: 'projectRef',
+}

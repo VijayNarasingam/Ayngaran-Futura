@@ -241,7 +241,7 @@ export function ResourcePage({ resource }) {
                 <i className="bi bi-arrow-left" aria-hidden="true" /> Back
               </button>
             ) : null}
-            {resource.hideAdd ? null : (
+            {resource.hideCsv ? null : (
               <button type="button" className="btn btn-ghost" onClick={exportCSV} disabled={!rows.length}>
                 <i className="bi bi-filetype-csv" aria-hidden="true" /> Export CSV
               </button>

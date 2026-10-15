@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar.jsx'
 import { Welcome } from './Welcome.jsx'
+import { useStore } from '../context/StoreContext.jsx'
 import { APP } from '../data/reference.js'
 
 const SEEN_KEY = `${APP.storageKey}:welcome`
@@ -29,6 +30,7 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome)
   const location = useLocation()
+  const { loading, error, reload } = useStore()
 
   useEffect(() => {
     setMenuOpen(false)
@@ -54,6 +56,29 @@ export function Layout() {
         >
           <i className="bi bi-list" aria-hidden="true" />
         </button>
+
+        {/* Without this the dashboard looks identical whether the API is
+            serving real records or is completely unreachable. */}
+        <div className="app-status" role="status" aria-live="polite">
+          {error ? (
+            <div className="status-bar status-error" role="alert">
+              <i className="bi bi-exclamation-octagon-fill" aria-hidden="true" />
+              <div className="status-text">
+                <strong>Cannot reach the SQL database.</strong>
+                <span>{error}</span>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={reload}>
+                <i className="bi bi-arrow-clockwise" aria-hidden="true" /> Retry
+              </button>
+            </div>
+          ) : loading ? (
+            <div className="status-bar status-loading">
+              <span className="spinner" aria-hidden="true" />
+              <span className="status-text">Loading records from the database…</span>
+            </div>
+          ) : null}
+        </div>
+
         <main className="view">
           <Outlet />
         </main>

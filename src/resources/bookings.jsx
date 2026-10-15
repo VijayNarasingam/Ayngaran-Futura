@@ -1,6 +1,7 @@
 import { ENUMS } from '../data/reference.js'
 import { money } from '../lib/format.js'
 import { pendingAmount } from '../lib/selectors.js'
+import { validateBookingAmounts } from '../lib/rules.js'
 import { enumOptions, marketerNameOf, projectNameOf, projectOptions, todayISO } from './common.jsx'
 
 /** Plot Booking section - Customer, Area, Sq ft, Plot No, Project and amounts. */
@@ -36,7 +37,15 @@ export const bookingsResource = (data) => ({
     { key: 'areaCents', label: 'Area (Cent)', type: 'number', required: true, step: '0.01', min: '0', hint: '1 cent = 435.6 sq ft' },
     { key: 'squareFeet', label: 'Square Feet', type: 'number', required: true, min: '0' },
     { key: 'totalAmount', label: 'Total Amount', type: 'currency', required: true },
-    { key: 'bookingAmount', label: 'Booking Amount', type: 'currency', required: true },
+    {
+      key: 'bookingAmount',
+      label: 'Booking Amount',
+      type: 'currency',
+      required: true,
+      // An advance above the full price breaks the
+      // totalValue === received + pending invariant, so block it here.
+      validate: validateBookingAmounts,
+    },
     {
       key: 'pendingAmount',
       label: 'Pending Amount',

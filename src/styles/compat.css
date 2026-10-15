@@ -143,3 +143,7 @@ a.menu-card { text-decoration: none; color: inherit; }
 .cell-empty { color: var(--text-subtle); }
 .mono { font-family: var(--font-mono); font-size: .82em; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ResourcePage list view - keeps the data panel full-bleed when no hero
+   metrics are shown above it. */
+.page-list > .page-head { margin-bottom: 4px; }

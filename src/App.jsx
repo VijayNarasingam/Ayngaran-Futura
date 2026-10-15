@@ -19,7 +19,8 @@ export default function App() {
     <StoreProvider>
       <ThemeProvider>
         <ToastProvider>
-          <HashRouter>
+          {/* Opt in early to the v7 behaviours so the upgrade is a no-op. */}
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/" element={<Navigate to="/marketers" replace />} />

@@ -1,8 +1,21 @@
 import { COLLECTION_TABLES, TABLE_COLUMNS } from '../db/schema.js'
-import { deleteRow, findById, insertRow, listAll, updateRow, getSetting, setSetting } from '../db/database.js'
+import {
+  deleteRow,
+  findById,
+  insertRow,
+  listAll,
+  updateRow,
+  getSetting,
+  setSetting,
+} from '../db/database.js'
 
 const asyncHandler = (fn) => (req, res) => {
   Promise.resolve(fn(req, res)).catch((error) => {
+    // ValidationError carries a 4xx status; let it through as-is.
+    if (error && typeof error.status === 'number') {
+      res.status(error.status).json({ error: error.message })
+      return
+    }
     console.error('[api]', error)
     res.status(500).json({ error: 'Internal server error' })
   })
@@ -69,7 +82,11 @@ export const registerApiRoutes = (app) => {
   app.delete('/api/:collection/:id', asyncHandler(async (req, res) => {
     const table = checkTable(req, res)
     if (!table) return
-    if (!deleteRow(table, req.params.id)) return res.status(404).json({ error: 'Not found' })
+    // ?cascade=1 detaches dependent records instead of refusing the delete.
+    const cascade = req.query.cascade === '1' || req.query.cascade === 'true'
+    if (!deleteRow(table, req.params.id, { cascade })) {
+      return res.status(404).json({ error: 'Not found' })
+    }
     res.json({ ok: true, id: req.params.id })
   }))
 }
