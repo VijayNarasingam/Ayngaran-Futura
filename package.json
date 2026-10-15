@@ -17,6 +17,9 @@
     "db:seed": "node server/seed-neon.mjs",
     "test:api": "node tests/api-contract.mjs",
     "test:api:pg": "node tests/api-contract-postgres.mjs",
+    "test:form": "node tests/run-jsx-test.mjs tests/form-payload.mjs",
+    "test:routing": "node tests/vercel-routing.mjs",
+    "test:all": "npm run test:logic && npm run test:sql && npm run test:classes && npm run test:api && npm run test:api:pg && npm run test:form",
     "db:setup": "node server/apply-schema.mjs"
   },
   "dependencies": {

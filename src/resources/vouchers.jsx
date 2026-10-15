@@ -59,6 +59,13 @@ export const voucherResource = (data, type) => ({
   baseFilter: (record) => record.type === type.key,
   decorate: decorateWithProject(data),
   createDefaults: () => ({ type: type.key, date: todayISO(), category: '' }),
+  // `type` is not a form field - it exists only to decide which book this
+  // voucher lands in - and the form only serialises `fields`. Without this the
+  // value from createDefaults is dropped on save, the row is stored with
+  // type='' and baseFilter hides it from EVERY book, so the entry looks like it
+  // never saved. Re-assert it on submit. Also correct on edit: a voucher stays
+  // in the book it was opened from.
+  sanitize: () => ({ type: type.key }),
   fields: [
     { key: 'date', label: 'Date', type: 'date', required: true, defaultValue: todayISO() },
     ...voucherFieldsFor(type),

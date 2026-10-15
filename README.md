@@ -162,7 +162,7 @@ PORT=9000 DATABASE_URL='postgresql://user:pass@host/db?sslmode=require' npm run 
         ▼
   Vite dev proxy  /api → :8080        (dev only; same-origin in production)
         ▼
-  Node http server  :8080              ── server/index.js  (or api/[...path].js on Vercel)
+  Node http server  :8080              ── server/index.js  (or api/index.js on Vercel)
         │  tiny express-like route facade, CORS, 5 MB body cap
         ▼
   /api routes                          ── server/routes/api.js
@@ -346,7 +346,7 @@ rewrite rules.
 ├── index.html                  # Vite entry, fonts + Bootstrap Icons
 ├── vite.config.js              # base: './' + /api dev proxy
 ├── vercel.json                 # Vite framework + api function config
-├── api/[...path].js            # Vercel serverless function (refuses to boot without DATABASE_URL)
+├── api/index.js                  # Vercel serverless function (refuses to boot without DATABASE_URL)
 ├── server/
 │   ├── index.js                # standalone Node http wrapper
 │   ├── app.js                  # shared request handling + route table
@@ -428,8 +428,14 @@ npm run build              # → dist/
 
 ### Vercel
 
-`vercel.json` publishes `dist/` as static files and `api/[...path].js` as a serverless function, so
+`vercel.json` publishes `dist/` as static files and `api/index.js` as a serverless function, so
 a single `vercel deploy --prod` covers both halves.
+
+The API is a **single** function at `/api`, reached through an explicit
+`/api/:path*` rewrite. This matters: an `api/[...path].js` catch-all matched
+only one segment in this project, so `/api/<collection>/<id>` fell through to
+Vercel's static handler and returned Vercel's own 404 page — silently breaking
+every Edit and Delete. `tests/vercel-routing.mjs` guards this.
 
 ```bash
 vercel login
