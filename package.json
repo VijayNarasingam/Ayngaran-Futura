@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "test:logic": "node tests/verified.mjs",
     "test:classes": "node tests/dump-classes.mjs",
-    "test:sql": "node server/test-sql.mjs"
+    "test:sql": "node server/test-sql.mjs",
+    "db:schema": "echo Run server/db/neon-schema.sql in the Neon console or with psql",
+    "db:seed": "node server/seed-neon.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

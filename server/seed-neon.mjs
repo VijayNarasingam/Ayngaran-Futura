@@ -1,0 +1,64 @@
+/**
+ * Seeds Neon with the demo records from src/data/seed.js.
+ * Safe to re-run: tables that already hold rows are skipped.
+ *
+ * Requires NEON_REST_URL and NEON_API_KEY in the environment
+ * (.env is loaded automatically).
+ */
+
+if (typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile()
+  } catch {
+    /* no .env file - rely on the real environment */
+  }
+}
+
+if (!process.env.NEON_REST_URL || !process.env.NEON_API_KEY) {
+  console.error(
+    'NEON_REST_URL and NEON_API_KEY must be set.\n' +
+      'Copy .env.example to .env and fill them in, or export them before running.',
+  )
+  process.exit(1)
+}
+
+const { seedIfEmpty, countRows, listAll, DRIVER } = await import('./db/index.js')
+const { SEED_BOOKINGS, SEED_LOANS, SEED_MARKETERS, SEED_PROJECTS, SEED_VOUCHERS } =
+  await import('../src/data/seed.js')
+
+if (DRIVER !== 'neon') {
+  console.error(
+    `This script seeds Neon, but the Neon driver is not active (driver=${DRIVER}). ` +
+      'Check NEON_REST_URL and NEON_API_KEY.',
+  )
+  process.exit(1)
+}
+
+const seeds = {
+  marketers: SEED_MARKETERS,
+  projects: SEED_PROJECTS,
+  bookings: SEED_BOOKINGS,
+  loans: SEED_LOANS,
+  vouchers: SEED_VOUCHERS,
+}
+
+console.log(`Seeding Neon via ${process.env.NEON_REST_URL}`)
+const inserted = await seedIfEmpty(seeds)
+
+let total = 0
+for (const [table, count] of Object.entries(inserted)) {
+  const existing = await countRows(table)
+  total += existing
+  console.log(
+    `  ${table.padEnd(10)} ${count === 0 ? 'already had rows - skipped' : `inserted ${count}`}` +
+      ` (now ${existing})`,
+  )
+}
+
+if (total === 0) {
+  console.warn('No rows in any table - did you run server/db/neon-schema.sql first?')
+}
+
+const projects = await listAll('projects')
+console.log(`\nDone. ${total} rows total. Projects: ${projects.map((p) => p.name).join(', ') || 'none'}`)
+process.exit(0)

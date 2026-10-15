@@ -7,7 +7,7 @@ import {
   updateRow,
   getSetting,
   setSetting,
-} from '../db/database.js'
+} from '../db/index.js'
 
 const asyncHandler = (fn) => (req, res) => {
   Promise.resolve(fn(req, res)).catch((error) => {
