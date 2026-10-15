@@ -10,8 +10,8 @@ server/*.sqlite
 server/*.sqlite-*
 
 # Secrets - never commit. See .env.example for what belongs here.
-.env
-.env.*
+# (.env*, and re-allow the template, in case a tool appends its own rule later.)
+.env*
 !.env.example
 
 # Full-resolution source artwork - kept on disk, not in the repo.

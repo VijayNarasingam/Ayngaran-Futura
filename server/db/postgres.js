@@ -67,6 +67,9 @@ const redact = (url) => url.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')
  * either path; insertRow checks first, see below.
  */
 const SQLSTATE_HINTS = [
+  // The schema has not been applied yet - almost always this, right after a
+  // first deploy. Say so, because a bare 500 sends people hunting elsewhere.
+  ['42P01', 500, 'table does not exist - run `npm run db:setup` against DATABASE_URL'],
   ['23505', 409, 'that id already exists'],
   ['23503', 409, 'referenced by another record'],
   ['22P02', 400, 'expected a number'],

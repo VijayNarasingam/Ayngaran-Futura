@@ -47,11 +47,17 @@ let deletedRows = []
 
 const TYPES = { id: 25, seq: 20 }
 
+/**
+ * Postgres errors reach the driver as HTTP 400 with a PostgREST JSON error
+ * body, and that is the only shape in which `.code` survives. (A transport
+ * failure, or a non-400 status, loses it - hence the message fallback.)
+ */
 function buildResponse(result) {
   if (injectError) {
-    const error = new Error(injectError.message)
-    error.code = injectError.code
-    return Promise.reject(error)
+    return new Response(
+      JSON.stringify({ code: injectError.code, message: injectError.message, details: null, hint: null }),
+      { status: 400, headers: { 'content-type': 'application/json' } },
+    )
   }
   const rowArray = result.map((row) =>
     Array.isArray(row) ? row : Object.values(row).map((v) => (v === undefined ? null : v)))
@@ -260,14 +266,14 @@ check('DATABASE_URL selects the postgres driver', DRIVER === 'postgres', `got ${
     executed.map((e) => e.query).join(' | '))
 }
 {
-  // Belt and braces: if a clash still slips through (a concurrent insert), the
-  // SQLSTATE embedded in the error message must still map to 409.
+  // Belt and braces: a clash that slips past the pre-check (a concurrent
+  // insert) arrives as SQLSTATE 23505 and must still map to 409.
   executed = []
-  injectError = { code: '23505', message: 'Server error (HTTP status 409): {"code":"23505","message":"duplicate key value violates unique constraint"}' }
+  injectError = { code: '23505', message: 'duplicate key value violates unique constraint' }
   let status = null
   try { await insertRow('projects', { id: 'BRAND-NEW-ID', name: 'Race' }) } catch (e) { status = e.status }
   injectError = null
-  check('A SQLSTATE embedded only in the message still maps to 409', status === 409, `got ${status}`)
+  check('A SQLSTATE 23505 from the database maps to 409', status === 409, `got ${status}`)
 }
 
 // --- updateRow ----------------------------------------------------------
@@ -350,6 +356,18 @@ check('DATABASE_URL selects the postgres driver', DRIVER === 'postgres', `got ${
 {
   const n = await countRows('projects')
   check('countRows returns a number', typeof n === 'number' && n >= 0, String(n))
+}
+
+// --- a missing schema must say so --------------------------------------
+{
+  injectError = { code: '42P01', message: 'relation "projects" does not exist' }
+  let err = null
+  try { await listAll('projects') } catch (e) { err = e }
+  injectError = null
+  check('A missing table produces an actionable message, not a bare 500',
+    /db:setup/.test(err?.message || ''), err?.message)
+  check('A missing table is still reported as a server fault',
+    err?.status === 500, `got ${err?.status}`)
 }
 
 const passed = results.filter((r) => r.pass).length
