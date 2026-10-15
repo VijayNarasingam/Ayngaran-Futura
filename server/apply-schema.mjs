@@ -17,14 +17,9 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { hasDatabaseUrl, loadEnvFiles, MISSING_DATABASE_URL } from './lib/load-env.mjs'
 
-if (typeof process.loadEnvFile === 'function') {
-  try {
-    process.loadEnvFile()
-  } catch {
-    /* no .env file - rely on the real environment */
-  }
-}
+loadEnvFiles()
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA_FILE = path.join(here, 'db', 'neon-schema.sql')
@@ -64,8 +59,8 @@ if (dryRun) {
   process.exit(0)
 }
 
-if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is not set.\nCopy .env.example to .env and fill it in, or export it.')
+if (!hasDatabaseUrl()) {
+  console.error(MISSING_DATABASE_URL)
   process.exit(1)
 }
 

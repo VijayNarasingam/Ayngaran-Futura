@@ -5,21 +5,12 @@
  * Requires DATABASE_URL in the environment (.env is loaded automatically).
  */
 
-if (typeof process.loadEnvFile === 'function') {
-  try {
-    process.loadEnvFile()
-  } catch {
-    /* no .env file - rely on the real environment */
-  }
-}
+import { hasDatabaseUrl, loadEnvFiles, MISSING_DATABASE_URL } from './lib/load-env.mjs'
 
-if (!process.env.DATABASE_URL) {
-  console.error(
-    'DATABASE_URL must be set.\n' +
-      'Copy .env.example to .env and fill it in, or export it before running.\n' +
-      'DATABASE_URL is the Postgres connection string, e.g.\n' +
-      '  postgresql://user:password@ep-xxx-pooler.<region>.aws.neon.tech/neondb?sslmode=require',
-  )
+loadEnvFiles()
+
+if (!hasDatabaseUrl()) {
+  console.error(MISSING_DATABASE_URL)
   process.exit(1)
 }
 
