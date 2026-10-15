@@ -21,16 +21,18 @@ function misconfigured(res) {
   res.end(
     JSON.stringify({
       error:
-        'Storage is not configured. Set NEON_REST_URL and NEON_API_KEY in the Vercel project environment variables.',
-      hint: 'See .env.example, and run server/db/neon-schema.sql against your Neon database.',
+        'Storage is not configured. Set DATABASE_URL in the Vercel project environment variables.',
+      hint:
+        'Use the Neon connection string (postgresql://...). See .env.example, and run server/db/neon-schema.sql against your database first.',
     }),
   )
 }
 
 export default async function handler(req, res) {
-  if (!process.env.NEON_REST_URL || !process.env.NEON_API_KEY) {
+  if (!process.env.DATABASE_URL) {
     return misconfigured(res)
   }
+  const { handleRequest } = await import('../server/app.js')
   await handleRequest(req, res)
 }
 

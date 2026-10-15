@@ -15,9 +15,11 @@
     "test:sql": "node server/test-sql.mjs",
     "db:schema": "echo Run server/db/neon-schema.sql in the Neon console or with psql",
     "db:seed": "node server/seed-neon.mjs",
-    "test:api": "node tests/api-contract.mjs"
+    "test:api": "node tests/api-contract.mjs",
+    "test:api:pg": "node tests/api-contract-postgres.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.4"

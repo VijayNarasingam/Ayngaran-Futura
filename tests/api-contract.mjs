@@ -114,7 +114,9 @@ globalThis.fetch = async (url, options = {}) => {
   return jsonResponse(200, [])
 }
 
-// Force the Neon driver without touching a real database.
+// Force the Neon REST (PostgREST) driver without touching a real database, and
+// make sure DATABASE_URL cannot take precedence over it.
+delete process.env.DATABASE_URL
 process.env.NEON_REST_URL = 'https://unit-test.apirest.us-east-2.aws.neon.tech/neondb/rest/v1'
 process.env.NEON_API_KEY = 'unit-test-key'
 process.env.NEON_SCHEMA = 'public'
@@ -150,7 +152,7 @@ function looksLikeLeakedPromise(value) {
 
 console.log('=== API contract (async Neon driver, mocked PostgREST) ===')
 
-check('Neon driver is the one under test', DRIVER === 'neon', `got ${DRIVER}`)
+check('Neon REST driver is the one under test', DRIVER === 'neon-rest', `got ${DRIVER}`)
 
 // GET /api/state
 {

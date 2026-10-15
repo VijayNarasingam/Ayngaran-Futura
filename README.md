@@ -3,9 +3,14 @@
 **Plot Booking, Project & Daily Voucher Tracker** — a dashboard for a layout / real-estate sales
 team, covering marketers, projects, plot bookings, loans & liabilities, and daily vouchers.
 
-React 18 + Vite on the front end, a **zero-dependency Node API server on SQLite** (`node:sqlite`)
-on the back end. No npm runtime dependencies on the server, no ORM, no external database to
-install.
+React 18 + Vite on the front end, a Node API server on the back end. Storage is chosen
+automatically:
+
+- **PostgreSQL** (`DATABASE_URL`) in production — on Vercel, talking to Neon over HTTPS
+- **SQLite** (`node:sqlite`) for local development — no install, no external service
+- **Neon REST/PostgREST** as an optional fallback
+
+No ORM, no database to install locally, and only one server dependency.
 
 ---
 
@@ -61,8 +66,9 @@ install.
 | UI | React 18 (function components + hooks) |
 | Routing | react-router-dom 6 (`HashRouter`) |
 | Build | Vite 8 + `@vitejs/plugin-react` |
-| Server | Node's built-in `node:http` — no Express, no npm dependencies |
-| Database | `node:sqlite` (`DatabaseSync`) — a single local `.sqlite` file |
+| Server | Node's built-in `node:http` — no Express |
+| Database (prod) | PostgreSQL via `DATABASE_URL` using `@neondatabase/serverless` (over HTTPS) |
+| Database (local) | `node:sqlite` (`DatabaseSync`) — a single local `.sqlite` file |
 | State | React Context over the API; SQL is the single source of truth |
 | Icons | Bootstrap Icons (CDN) |
 | Fonts | Inter + Space Grotesk (Google Fonts) |
@@ -113,13 +119,17 @@ never re-inserts or clobbers your data.
 | Script | What it does |
 |---|---|
 | `npm run dev` | Start the Vite dev server (frontend only, expects the API to be up) |
-| `npm run server` | Start the Node + SQLite API on port 8080 |
+| `npm run server` | Start the Node API on port 8080 |
 | `npm run dev:all` | Both in one command — **POSIX shells only**, see the note below |
 | `npm run build` | Production build of the frontend into `dist/` |
 | `npm run preview` | Serve the production frontend build locally |
 | `npm run test:logic` | Frontend logic / data invariants (`node:assert`) |
 | `npm run test:sql` | SQLite smoke test against a throwaway temp database |
+| `npm run test:api` | Route contract against the **Neon REST** driver (mocked PostgREST) |
+| `npm run test:api:pg` | Driver contract against the **Postgres** driver (mocked transport) |
 | `npm run test:classes` | Dump the CSS class inventory used by the app |
+| `npm run db:schema` | Reminder to run `server/db/neon-schema.sql` against your database |
+| `npm run db:seed` | Seed PostgreSQL with the demo records (`DATABASE_URL` required) |
 
 > **`dev:all` on Windows:** the script uses `cmd &` backgrounding, which PowerShell does not
 > support. On Windows either run the two commands in separate terminals, or use
@@ -129,13 +139,18 @@ never re-inserts or clobbers your data.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `DATABASE_URL` | — | Postgres connection string. **Setting this selects the Postgres driver** — this is the only variable Vercel needs |
 | `PORT` | `8080` | API server port |
-| `SQLITE_PATH` | `server/ayngaran-futura.sqlite` | Database file location |
+| `SQLITE_PATH` | `server/ayngaran-futura.sqlite` | SQLite file location (local dev) |
 | `CORS_ORIGIN` | `*` (any) | Exact allowed origin. **Set this before exposing the API anywhere other than localhost** |
+| `NEON_REST_URL`, `NEON_API_KEY`, `NEON_SCHEMA` | — | Optional PostgREST fallback, used only when `DATABASE_URL` is unset |
 
 ```bash
-PORT=9000 SQLITE_PATH=/var/data/ayngaran.sqlite CORS_ORIGIN=https://ops.example.com npm run server
+PORT=9000 DATABASE_URL='postgresql://user:pass@host/db?sslmode=require' npm run server
 ```
+
+> **`DATABASE_URL` contains the database password.** Keep it in Vercel environment variables or a
+> git-ignored `.env` — never in the repository, and never in chat.
 
 ---
 
@@ -147,31 +162,45 @@ PORT=9000 SQLITE_PATH=/var/data/ayngaran.sqlite CORS_ORIGIN=https://ops.example.
         ▼
   Vite dev proxy  /api → :8080        (dev only; same-origin in production)
         ▼
-  Node http server  :8080              ── server/index.js
-        │  tiny express-like route facade, CORS open, 5 MB body cap
+  Node http server  :8080              ── server/index.js  (or api/[...path].js on Vercel)
+        │  tiny express-like route facade, CORS, 5 MB body cap
         ▼
   /api routes                          ── server/routes/api.js
-        │  whitelist collections, shape SQL params
+        │  driver-agnostic interface
         ▼
-  DatabaseSync (node:sqlite)           ── server/db/database.js
-        │  prepare() with bound parameters only
+  server/db/index.js                   ── picks a driver by env, in this order:
+        │                                  1. postgres.js   DATABASE_URL set
+        │                                  2. neon.js       NEON_REST_URL + NEON_API_KEY set
+        │                                  3. database.js   neither - local SQLite file
         ▼
-  ayngaran-futura.sqlite               ── server/db/schema.js
+  @neondatabase/serverless (HTTPS)      ── no TCP, so a serverless cold start cannot
+        │  bound $1,$2 parameters              exhaust the connection limit
+        ▼
+  PostgreSQL (Neon)
 ```
 
+**Three drivers, one interface.** All of `listAll`, `findById`, `insertRow`, `updateRow`,
+`deleteRow`, `findReferences`, `getSetting`, `setSetting`, `countRows` and `nextId` are `async` in
+every driver, and return the same shapes — so the routes never know which one is in use. The SQLite
+driver resolves synchronously, which is why the `await`s matter: without them a Promise would reach
+`res.json()` and serialise to `{}` with a 200.
+
+**Identifiers vs values.** Values are always bound as `$1, $2, …`. Table and column names cannot be
+bound, so they are double-quoted by `ident()` and always drawn from the `TABLE_COLUMNS` whitelist —
+an unknown collection is rejected before any statement is built.
+
 **Frontend.** `StoreProvider` (`src/context/StoreContext.jsx`) fetches the whole dashboard state
-once from `GET /api/state`, then keeps React state in sync optimistically from the row the API
-returns. `add` / `update` / `remove` are `async` and reject on API failure, so the calling page can
-show an error toast instead of silently dropping the edit. Pages consume `data`, `records()`,
-`find()`, `loading`, `error` and `reload` through `useStore()`.
+once from `GET /api/state`, then keeps React state in sync from the row the API returns.
+`add` / `update` / `remove` are `async` and reject on API failure, so the calling page can show an
+error toast instead of silently dropping the edit. Pages consume `data`, `records()`, `find()`,
+`loading`, `error` and `reload` through `useStore()`.
 
 **Derived values are never stored.** Pending amount, project totals, KPI aggregates and
 site-spend-by-head are all computed in `src/lib/selectors.js` from the raw rows, so the database
 holds only what the user actually entered.
 
 **`src/lib/storeReducer.js` is retained for the seed data** (`buildSeedState`) and for
-`test:logic`. The live app no longer uses `localStorage` for persistence — SQLite is the source of
-truth.
+`test:logic`. The live app does not use `localStorage` — the database is the source of truth.
 
 **The resources layer is the extension point.** Each module in `src/resources/` declares a
 collection's fields, table columns, filters, and CSV filename; `ResourcePage` renders the add/edit
@@ -248,9 +277,37 @@ records; numeric columns are coerced and validated on write.
 | `vouchers` | `VC-0001` | type, date, category, amount, paymentMode, paidTo, projectRef, remarks |
 
 `projectRef` / `marketerRef` are loose references (id or free text), not foreign keys — the UI
-resolves them for display. Keep `schema.js` in sync with `src/resources/*.jsx` field definitions.
+resolves them for display, and deleting a record that others still point at is refused with `409`
+rather than silently orphaning them. Keep `schema.js` in sync with `src/resources/*.jsx` field
+definitions.
 
-**Backups** are a file copy:
+### PostgreSQL setup
+
+Run `server/db/neon-schema.sql` once against your database — in the Neon console's SQL editor, or:
+
+```bash
+psql "$DATABASE_URL" -f server/db/neon-schema.sql
+```
+
+It creates the same six tables, with columns quoted so they match `TABLE_COLUMNS` exactly (the
+frontend needs no changes), plus a `bigserial seq` for reliable insertion order. The script ends
+with `NOTIFY pgrst, 'reload schema'`; if the first request 404s, run that one line again.
+
+Then load the demo data:
+
+```bash
+npm run db:seed      # skips tables that already hold rows, so it is safe to re-run
+```
+
+### Backups
+
+PostgreSQL — use your provider's point-in-time recovery, or:
+
+```bash
+pg_dump "$DATABASE_URL" > backup-$(date +%F).sql
+```
+
+SQLite (local) — a file copy:
 
 ```bash
 # stop the server first
@@ -288,17 +345,27 @@ rewrite rules.
 .
 ├── index.html                  # Vite entry, fonts + Bootstrap Icons
 ├── vite.config.js              # base: './' + /api dev proxy
+├── vercel.json                 # Vite framework + api function config
+├── api/[...path].js            # Vercel serverless function (refuses to boot without DATABASE_URL)
 ├── server/
-│   ├── index.js                # http server, route matching, CORS, body parsing
-│   ├── routes/api.js           # /api endpoints
+│   ├── index.js                # standalone Node http wrapper
+│   ├── app.js                  # shared request handling + route table
+│   ├── routes/api.js           # /api endpoints (driver-agnostic)
 │   ├── db/
-│   │   ├── schema.js           # DDL + column whitelists + numeric columns
-│   │   └── database.js         # DatabaseSync wrapper: list/find/insert/update/delete/seed
+│   │   ├── index.js            # driver selection: postgres → neon-rest → sqlite
+│   │   ├── schema.js           # column whitelists, numeric columns, reference map
+│   │   ├── postgres.js         # DATABASE_URL driver (Postgres over HTTPS)
+│   │   ├── neon.js             # optional PostgREST fallback driver
+│   │   ├── database.js         # local SQLite driver (node:sqlite)
+│   │   └── neon-schema.sql     # PostgreSQL DDL to run once
+│   ├── seed-neon.mjs           # npm run db:seed
 │   ├── test-sql.mjs            # npm run test:sql
 │   └── ayngaran-futura.sqlite  # generated, git-ignored
 ├── public/favicon.svg
 ├── tests/
 │   ├── verified.mjs            # npm run test:logic
+│   ├── api-contract.mjs        # npm run test:api    (routes vs PostgREST driver)
+│   ├── api-contract-postgres.mjs # npm run test:api:pg (Postgres driver)
 │   ├── check-classes.mjs
 │   └── dump-classes.mjs
 └── src/
@@ -309,7 +376,7 @@ rewrite rules.
     ├── components/             # Layout, Sidebar, DataTable, ResourcePage, FormField,
     │                           # Modal, ConfirmDialog, Charts, KpiCard, Badge, PageHeader
     ├── context/                # StoreContext, ThemeContext, ToastContext
-    ├── lib/                    # api.js (fetch client), selectors, csv, format, storeReducer
+    ├── lib/                    # api.js (fetch client), selectors, csv, format, rules, storeReducer
     ├── data/                   # reference.js (master data), seed.js (demo records)
     ├── styles/                 # global.css (theme), compat.css
     └── asserts/                # logo assets
@@ -320,24 +387,33 @@ rewrite rules.
 ## Tests
 
 ```bash
-npm run test:logic   # frontend data + selector invariants
-npm run test:sql     # SQLite CRUD against a temp database
+npm run test:logic     # frontend data + selector invariants
+npm run test:sql       # SQLite CRUD against a temp database
+npm run test:api       # route contract vs the PostgREST driver
+npm run test:api:pg    # Postgres driver contract
 ```
 
 `tests/verified.mjs` asserts what matters most on the data layer:
 
 - all 11 site-spend categories are configured
 - seed contains exactly Project 1, 2 and 3
-- the pending-amount invariant holds (`totalValue === received + pending`) across bookings and per project
+- the pending-amount invariant holds (`totalValue === received + pending`) across bookings and per project, **including an overpaid booking**
 - site spend grouped by head sums to total site vouchers
 - reducer `add` / `update` / `remove` generate sequential ids and mutate correctly
-- CSV escaping and currency formatting
+- CSV escaping, formula-injection neutralising, and currency formatting
+- overpayment is rejected by the shared rule in `src/lib/rules.js`
 
 `server/test-sql.mjs` points `SQLITE_PATH` at a throwaway temp database, then checks that all five
 tables list, seed, insert (auto id `MKT-xxxx`, next id increments), update and delete correctly,
 that a duplicate id is rejected with `409`, that deleting a referenced project is refused with
 `409`, and that an overpaying booking is refused with `400`. Running it never touches your real
 data.
+
+The two `test:api*` suites mock the database transport and assert on the SQL the drivers actually
+emit. They exist because the SQLite driver is synchronous: a missing `await` in the routes is
+invisible locally, but against an async driver it makes `res.json(promise)` serialise to `{}` with a
+200 — and because a Promise is truthy, every `if (!row)` 404 guard silently stops firing. Reverting
+the awaits fails 12 of the 24 route checks and 2 of the 38 driver checks.
 
 ---
 
@@ -350,16 +426,33 @@ for the API.
 npm run build              # → dist/
 ```
 
+### Vercel
+
+`vercel.json` publishes `dist/` as static files and `api/[...path].js` as a serverless function, so
+a single `vercel deploy --prod` covers both halves.
+
 ```bash
-# 1. frontend → any static host (GitHub Pages, Netlify, S3, Nginx)
-# 2. api → any Node 22+ host
-PORT=8080 SQLITE_PATH=/var/lib/ayngaran/ayngaran.sqlite node server/index.js
+vercel login
+vercel link
+vercel env add DATABASE_URL production     # interactive - keeps the password out of shell history
+vercel deploy --prod
+```
+
+The function **refuses to start without `DATABASE_URL`** rather than silently falling back to
+SQLite: a serverless instance has an ephemeral disk, so writes would be accepted and then discarded
+on the next cold start.
+
+### Self-hosted
+
+```bash
+npm run build              # → dist/  (any static host)
+DATABASE_URL='postgresql://…' PORT=8080 node server/index.js
 ```
 
 Because routing is hash-based and Vite builds with `base: './'`, the frontend can be served from a
 sub-path. Serve the API **same-origin** with the static files (a reverse-proxy rule for `/api`) or
-set a CORS-allowed origin — the server currently sends `access-control-allow-origin: *`, which is
-fine for a trusted internal deployment but should be locked down before exposing the API publicly.
+set `CORS_ORIGIN` — the server sends `access-control-allow-origin: *` by default, which is fine for
+a trusted internal deployment but should be locked down before exposing the API publicly.
 
 There is **no authentication** in this build. Put the app behind your network boundary, VPN, or an
 authenticating reverse proxy before exposing it.

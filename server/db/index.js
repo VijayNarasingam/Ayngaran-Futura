@@ -1,24 +1,35 @@
 /**
- * Storage driver selection.
+ * Storage driver selection, in precedence order:
  *
- * Local development and a self-hosted `npm run server` use the SQLite file in
- * ./database.js. Vercel (or any host without a persistent disk) uses Neon over
- * its PostgREST REST API in ./neon.js - selected by the presence of
- * NEON_REST_URL. Both expose an identical async interface, so routes never
- * know which one they are talking to.
+ *   1. postgres  - DATABASE_URL is set. Real Postgres over HTTPS. This is what
+ *                  Vercel uses, because a serverless instance has no persistent
+ *                  disk. See ./postgres.js.
+ *   2. neon      - NEON_REST_URL + NEON_API_KEY are set. Neon's PostgREST REST
+ *                  API, kept as a fallback for environments without the driver
+ *                  dependency. See ./neon.js.
+ *   3. sqlite    - neither is set. The local file in ./database.js, used by
+ *                  `npm run server` in development.
  *
- * Every function below is async. The SQLite driver resolves immediately, so
- * call sites behave the same either way.
+ * All three expose an identical async interface, so routes never know which one
+ * they are talking to. The SQLite driver resolves immediately, so call sites
+ * behave the same either way.
  */
 
-const useNeon = Boolean(process.env.NEON_REST_URL && process.env.NEON_API_KEY)
+const usePostgres = Boolean(process.env.DATABASE_URL)
+const useNeonRest = !usePostgres && Boolean(process.env.NEON_REST_URL && process.env.NEON_API_KEY)
 
-const driver = useNeon ? await import('./neon.js') : await import('./database.js')
+const driver = usePostgres
+  ? await import('./postgres.js')
+  : useNeonRest
+    ? await import('./neon.js')
+    : await import('./database.js')
 
-export const DRIVER = useNeon ? 'neon' : 'sqlite'
+export const DRIVER = usePostgres ? 'postgres' : useNeonRest ? 'neon-rest' : 'sqlite'
 
 export const listAll = (...args) => driver.listAll(...args)
 export const findById = (...args) => driver.findById(...args)
+export const countRows = (...args) => driver.countRows(...args)
+export const nextId = (...args) => driver.nextId(...args)
 export const insertRow = (...args) => driver.insertRow(...args)
 export const updateRow = (...args) => driver.updateRow(...args)
 export const deleteRow = (...args) => driver.deleteRow(...args)
