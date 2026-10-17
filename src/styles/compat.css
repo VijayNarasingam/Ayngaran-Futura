@@ -19,7 +19,7 @@
 .nav ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .nav-link { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: var(--radius-sm); color: var(--text-sidebar); font-size: .88rem; font-weight: 500; width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; }
 .nav-link:hover { background: var(--bg-sidebar-hover); color: var(--text-sidebar-bright); }
-.nav-link.is-active { background: var(--bg-sidebar-active); color: #fae9a8; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(232,205,130,.4); }
+.nav-link.is-active { background: var(--bg-sidebar-active); color: #fae9a8; font-weight: 600; box-shadow: inset 3px 0 0 0 var(--castle-gold-mid); }
 .main { background: radial-gradient(circle at 50% 0%, rgba(14,90,62,.35) 0%, transparent 55%), var(--bg-app); }
 .nav-link i { font-size: 1.05rem; width: 18px; }
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
