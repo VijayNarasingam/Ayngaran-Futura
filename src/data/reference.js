@@ -9,6 +9,19 @@ export const APP = {
   tagline: 'Plot Booking, Project & Daily Voucher Tracker',
   version: '1.0.0',
   storageKey: 'ayngaran-futura:data:v1',
+  founder: {
+    name: 'Mr. Sri Ram Kumar',
+    role: 'Founder & CEO',
+    mobile: '+91 9655591111',
+  },
+  office: {
+    label: 'Krishnagiri Office',
+    lines: [
+      '65/19, Thammanna Nagar, 1st Cross,',
+      'Co-operative Colony (Behind KVB Bank),',
+      'Krishnagiri - 635001, Tamil Nadu',
+    ],
+  },
 }
 
 export const slugify = (text) =>

@@ -1329,15 +1329,19 @@ button, input, select, textarea {
   }
 }
 /* =====================================================================
-   Welcome screen - full-bleed hero on first load, before a section is
-   picked. Dismissed by the CTA, Escape, or any sidebar click.
+   Welcome screen - branded splash shown on first load of a tab session.
+   It sits to the RIGHT of the sidebar, which stays visible and usable;
+   picking a section there dismisses it too.
    ===================================================================== */
 
 body.welcome-open { overflow: hidden; }
 
 .welcome {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
   z-index: 200;
   display: grid;
   place-items: center;
@@ -1359,8 +1363,8 @@ body.welcome-open { overflow: hidden; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 50% 45%, rgba(3, 15, 11, 0.62) 0%, rgba(3, 15, 11, 0.86) 55%, rgba(3, 15, 11, 0.96) 100%),
-    linear-gradient(180deg, rgba(7, 30, 22, 0.72) 0%, rgba(7, 30, 22, 0.35) 40%, rgba(7, 30, 22, 0.85) 100%);
+    radial-gradient(ellipse at 50% 45%, rgba(3, 15, 11, 0.5) 0%, rgba(3, 15, 11, 0.8) 55%, rgba(3, 15, 11, 0.95) 100%),
+    linear-gradient(180deg, rgba(7, 30, 22, 0.7) 0%, rgba(7, 30, 22, 0.3) 40%, rgba(7, 30, 22, 0.88) 100%);
 }
 
 .welcome-body {
@@ -1372,45 +1376,59 @@ body.welcome-open { overflow: hidden; }
   text-align: center;
   gap: 0;
   padding: 32px 24px;
-  max-width: 680px;
+  max-width: 720px;
   animation: welcome-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .welcome-logo {
-  width: 104px;
-  height: 104px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
   mix-blend-mode: screen;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   animation: welcome-pop 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.welcome-kicker {
+.welcome-title {
   margin: 0;
-  font-size: 0.76rem;
+  font-family: var(--font-display, 'Space Grotesk', 'Inter', serif);
+  font-size: clamp(1.9rem, 4.6vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fdf6e3;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7);
+}
+
+.welcome-rule {
+  display: block;
+  width: min(340px, 70%);
+  height: 14px;
+  margin: 10px 0 0;
+  background:
+    radial-gradient(circle at 50% 60%, var(--castle-gold-hi) 0%, var(--castle-gold) 38%, transparent 72%),
+    linear-gradient(90deg, transparent 0%, var(--castle-gold-mid) 22%, var(--castle-gold-deep) 50%, var(--castle-gold-mid) 78%, transparent 100%);
+  clip-path: polygon(0 62%, 22% 30%, 42% 58%, 50% 8%, 58% 58%, 78% 30%, 100% 62%, 100% 78%, 78% 50%, 58% 74%, 50% 34%, 42% 74%, 22% 50%, 0 78%);
+  opacity: 0.95;
+}
+
+.welcome-sub {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 220, 0.78);
+  max-width: 46ch;
+}
+
+.welcome-choose {
+  margin: 26px 0 10px;
+  font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--castle-gold);
-}
-
-.welcome-title {
-  margin: 8px 0 0;
-  font-family: var(--font-display, 'Space Grotesk', 'Inter', sans-serif);
-  font-size: clamp(2.1rem, 6vw, 3.4rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: #fdf6e3;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
-}
-
-.welcome-sub {
-  margin: 12px 0 0;
-  font-size: 0.98rem;
-  line-height: 1.55;
-  color: rgba(245, 240, 220, 0.82);
-  max-width: 46ch;
 }
 
 .welcome-sections {
@@ -1419,36 +1437,90 @@ body.welcome-open { overflow: hidden; }
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin: 26px 0 0;
+  margin: 0;
   padding: 0;
 }
+
+.welcome-sections li { display: flex; }
 
 .welcome-chip {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 13px;
+  padding: 8px 15px;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  color: rgba(245, 240, 220, 0.9);
+  font-family: inherit;
+  color: rgba(245, 240, 220, 0.92);
   background: rgba(232, 205, 130, 0.1);
-  border: 1px solid rgba(232, 205, 130, 0.32);
-  backdrop-filter: blur(6px);
+  border: 1px solid rgba(232, 205, 130, 0.34);
+  cursor: pointer;
+  transition: var(--transition);
 }
+
+.welcome-chip:hover,
+.welcome-chip:focus-visible {
+  color: #071e16;
+  background: var(--castle-gold);
+  border-color: var(--castle-gold-hi);
+}
+
+.welcome-chip:hover i,
+.welcome-chip:focus-visible i { color: #071e16; }
 
 .welcome-chip i { color: var(--castle-gold); font-size: 0.9rem; }
 
-.welcome-enter {
-  margin-top: 30px;
-  padding: 12px 28px;
-  font-size: 0.95rem;
-  font-weight: 600;
+.welcome-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 28px;
 }
 
-.welcome-hint {
-  margin: 12px 0 0;
+.welcome-card {
+  flex: 1 1 240px;
+  max-width: 300px;
+  padding: 14px 16px;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-lg);
+  color: #0b2419;
+}
+
+.welcome-card-label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0b2419;
+}
+
+.welcome-card-role {
+  margin: 2px 0 0;
   font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--castle-gold-deep);
+}
+
+.welcome-card-line {
+  margin: 3px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #234a38;
+}
+
+.welcome-card-line a { color: #0b2419; font-weight: 600; }
+
+.welcome-hint {
+  margin: 18px 0 0;
+  font-size: 0.74rem;
   color: rgba(245, 240, 220, 0.55);
 }
 
@@ -1468,11 +1540,15 @@ body.welcome-open { overflow: hidden; }
 }
 
 @media (max-width: 840px) {
+  /* Below this width the sidebar is off-canvas, so the splash takes the
+     full viewport again rather than leaving an empty strip. */
+  .welcome { left: 0; }
   .welcome-body { padding: 24px 18px; }
-  .welcome-logo { width: 78px; height: 78px; }
+  .welcome-logo { width: 72px; height: 72px; }
   .welcome-sections { gap: 6px; }
-  .welcome-chip { font-size: 0.74rem; padding: 6px 11px; }
+  .welcome-chip { font-size: 0.76rem; padding: 7px 12px; }
   .welcome-hero { object-position: 60% center; }
+  .welcome-cards { margin-top: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

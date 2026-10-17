@@ -17,7 +17,6 @@ export function Sidebar({ open, onClose, onNavigate }) {
         <img src={logo} alt={`${APP.name} logo`} className="brand-logo" />
         <span className="brand-text">
           <strong>{APP.name}</strong>
-          <small>{APP.tagline}</small>
         </span>
       </div>
 
